@@ -2,7 +2,7 @@ class Client:
     _id_counter=1
 
     def __init__(self, name: str, age: int, cpf: str):
-        self._id= Client.self._id_counter
+        self._id= Client._id_counter
         Client._id_counter+=1
 
         self._name= name

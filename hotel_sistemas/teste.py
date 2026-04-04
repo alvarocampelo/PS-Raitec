@@ -1,38 +1,41 @@
-from controllers import hotel_controller
+from controllers.hotel_controller import HotelController
+from models.client import Client
+from models.room import Room
+from models.booking import Booking
+from models.admin import Admin
+from controllers.hotel_controller import HotelController # Ajuste o import conforme sua pasta
+
+def testar_sistema():
+    controller = HotelController()
+
+    # --- TESTE DE CLIENTE ---
+    print("--- Testando Registro de Cliente ---")
+    cliente1 = Client("123.456.789-00", 15, "João Silva")
+    controller.register_client(cliente1)
+    
+    # Testar duplicata (deve dar erro)
+    controller.register_client(cliente1) 
+    
+    # --- TESTE DE QUARTO ---
+    print("\n--- Testando Registro de Quarto ---")
+    quarto101 = Room(101, "Simples", 150.0, True)
+    controller.register_room(quarto101)
+
+    # --- TESTE DE RESERVA ---
+    print("\n--- Testando Registro de Reserva ---")
+    # Supondo que sua Booking receba id, cliente e quarto
+    reserva1 = Booking("B001", cliente1, quarto101, 7) 
+    controller.register_booking(reserva1)
+
+    # --- VERIFICAÇÃO FINAL ---
+    print("\n--- Estado Final do Sistema ---")
+    print(f"Total de Clientes: {len(controller.get_all_clients())}")
+    print(f"Total de Quartos: {len(controller.get_all_rooms())}")
+    print(f"Total de Reservas: {len(controller.get_all_bookings())}")
+
+if __name__ == "__main__":
+    testar_sistema()
 
 
-class Client:
-    def __init__(self, nome: str, cpf: str):
-        self.nome = nome
-        self.cpf = cpf
 
-# Supondo que sua classe se chame HotelManager
-manager = hotel_controller.HotelController()
 
-print("--- INICIANDO TESTES ---")
-
-# TESTE 1: Registro Normal (Sucesso)
-print("\nTeste 1: Registro Válido")
-c1 = Client("Alice", "123.456.789-00")
-manager.register_client(c1)
-
-# TESTE 2: Duplicação (Deve cair no seu 'else')
-print("\nTeste 2: CPF Duplicado")
-c2 = Client("Alice Repetida", "123.456.789-00")
-manager.register_client(c2)
-
-# TESTE 3: Objeto Inválido (Deve cair no AttributeError)
-print("\nTeste 3: Passando uma String em vez de Objeto")
-manager.register_client("Não sou um cliente")
-
-# TESTE 4: Objeto Nulo (Deve cair no TypeError)
-print("\nTeste 4: Passando None")
-manager.register_client(None)
-
-# TESTE 5: Objeto sem CPF (Deve cair no seu ValueError customizado)
-print("\nTeste 5: Cliente sem CPF")
-c3 = Client("Bruno", "") # CPF Vazio
-manager.register_client(c3)
-
-print("\n--- FIM DOS TESTES ---")
-print(f"Estado final do dicionário: {manager.client_dict}")

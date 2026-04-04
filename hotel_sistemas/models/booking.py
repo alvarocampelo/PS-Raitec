@@ -3,15 +3,17 @@ from datetime import date
 class Booking:
     _id_counter=1
 
-    def __init__(self, client: Client, room: Room, checkin: date, days: int, total_expense: float):
+    def __init__(self, client: Client, room: Room, checkin: date, checkout :date):
         self._id_counter= Booking._id_counter
         Booking._id_counter+=1
 
         self._client= client
         self._room= room
         self._checkin= checkin
-        self._days= days
-        self._total_expense= total_expense
+        self._active= False
+        self._total_expense= None
+        self._checkin = checkin
+        self._checkout = checkout
     
     #getters
     def get_id(self):
@@ -25,16 +27,24 @@ class Booking:
 
     def get_checkin(self):
         return self._checkin
-
-    def get_days(self):
-        return self._days
+    
+    def get_checkout(self):
+        return self._checkout
 
     def get_total_expense(self):
-        return self._total_expense
+        dailys = (self._checkout - self._checkin).days
+        if dailys <= 0: dailys = 1 # Garantir pelo menos 1 diária
+        self._total_expense = dailys * self._room.get_price()
+
+    def get_active(self):
+        return self.__active
     
     #setters
     def set_client(self, client):
         self._client = client
+
+    def set_active(self, active: Boolean):
+        self.__active = active
 
     def set_room(self, room):
         self._room = room
@@ -42,11 +52,8 @@ class Booking:
     def set_checkin(self, checkin):
         self._checkin = checkin
 
-    def set_days(self, days):
-        if days > 0:
-            self._days = days
+    def set_checkout(self, checkout):
+        self._checkout = checkout
 
-    def set_total_expense(self, total_expense):
-        if total_expense >= 0:
-            self._total_expense = total_expense
+
 

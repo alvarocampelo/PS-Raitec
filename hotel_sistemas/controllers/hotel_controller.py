@@ -6,13 +6,13 @@ from models.admin import Admin
 class HotelController:
 
     def __init__(self):
-        self.login_attempts = 0  # Contador de erros
-        self.admin_password = "teste"
-        self.client_dict: dict[str, Client] = {}
-        self.room_dict: dict[str, Room] = {}
-        self.booking_dict: dict[str, Booking] = {}
+        self.__login_attempts = 0  # Contador de erros
+        self.__admin_password = "teste"
+        self.__client_dict: dict[str, Client] = {}
+        self.__room_dict: dict[str, Room] = {}
+        self.__booking_dict: dict[str, Booking] = {}
 
-    #Autentica o administrador. 
+    # Autentica o administrador. 
     def accessAuthentication(self, password: str) -> bool:
         
         # Realiza a autenticação do administrador com controle de tentativas.
@@ -23,24 +23,24 @@ class HotelController:
 
         # Verifica primeiro se o sistema já está bloqueado por excesso de erros
         # Isso impede que o usuário continue tentando mesmo se acertar a senha depois
-        if self.login_attempts >= MAX_ATTEMPTS:
+        if self.__login_attempts >= MAX_ATTEMPTS:
             print("ACESSO BLOQUEADO: Limite de tentativas excedido. Contate o suporte.")
             return False
 
         # Comparação da senha fornecida com a senha armazenada no controlador
-        if password == self.admin_password:
+        if password == self.__admin_password:
             # Se acertar, resetamos o contador para 0. 
             # Isso garante que futuras falhas não acumulem com erros antigos já resolvidos.
-            self.login_attempts = 0 
+            self.__login_attempts = 0 
             print("Autenticação bem-sucedida! Bem-vindo, Admin.")
             return True
         
         else:
             # Se errar, incrementamos o contador de falhas da instância
-            self.login_attempts += 1
+            self.__login_attempts += 1
             
             # Cálculo dinâmico de quantas chances o usuário ainda tem
-            tentativas_restantes = MAX_ATTEMPTS - self.login_attempts
+            tentativas_restantes = MAX_ATTEMPTS - self.__login_attempts
             
             # Feedback visual para o usuário não ser pego de surpresa pelo bloqueio
             print(f"Erro: Senha incorreta! Tentativas restantes: {tentativas_restantes}")
@@ -69,12 +69,12 @@ class HotelController:
             
             
             # Se já existir no dicionário, impede o cadastro para não sobrescrever um cliente antigo.
-            if cpf in self.client_dict:
+            if cpf in self.__client_dict:
                 print(f"Erro: O CPF {cpf} já está cadastrado.")
             
             else:
                 # Adiciona o objeto cliente ao dicionário, usando o CPF como chave para busca rápida.
-                self.client_dict[cpf] = client
+                self.__client_dict[cpf] = client
                 print(f"Cliente {client.get_name()} registrado com sucesso!")
 
         except Exception as e:
@@ -91,37 +91,44 @@ class HotelController:
 
         try:
             b_id = booking.get_id()
-            if b_id in self.booking_dict:
+            if b_id in self.__booking_dict:
                 print(f"Erro: A reserva ID {b_id} já existe.")
             else:
-                self.booking_dict[b_id] = booking
+                self.__booking_dict[b_id] = booking
                 print(f"Reserva {b_id} registrada com sucesso!")
         except Exception as e:
             print(f"Erro ao registrar reserva: {e}")
 
-    # Solicita a reserva
+    # Solicita reserva
+
     def reqBooking(self, booking: Booking) -> None:
-        room = booking.get_room()
+        room_number = booking.get_room().get_number()
+        
+        # Verifica se o quarto existe no sistema
+        if room_number not in self.room_dict:
+            print(f"Erro: O quarto {room_number} não existe no cadastro.")
+            return
+
         checkin = booking.get_checkin()
         checkout = booking.get_checkout()
 
-        # Verifica se há conflito com reservas existentes para este quarto
+        # Verifica conflito de datas
         for b in self.booking_dict.values():
-            if b.get_room().get_number() == room.get_number():
-                # Lógica de sobreposição de datas
+            if b.get_room().get_number() == room_number:
                 if not (checkout <= b.get_checkin() or checkin >= b.get_checkout()):
                     print("Erro: O quarto já está reservado para este período!")
-                    return # Encerra após o erro
+                    return 
 
-        self.register_booking(booking) # Ao final de tudo, registra a reserva
+        # Registra reserva
+
+        self.register_booking(booking)
 
     # Remove ou cancela uma reserva do sistema.
-
     def remove_booking(self, booking_id: int):
         
        
         # Verifica se a reserva existe e se não está 'Em Andamento' antes de apagar.
-        booking = self.booking_dict.get(booking_id)
+        booking = self.__booking_dict.get(booking_id)
 
         if not booking:
             print(f"Erro: A reserva com ID {booking_id} não foi encontrada.")
@@ -148,7 +155,7 @@ class HotelController:
 
     # Ativa a reserva e ocupa o quarto.
     def checkIn(self, booking_id: int):
-        booking = self.booking_dict.get(booking_id)
+        booking = self.__booking_dict.get(booking_id)
         if not booking:
             print("Erro: Reserva não encontrada.")
             return
@@ -160,7 +167,7 @@ class HotelController:
 
     # Finaliza a reserva e libera o quarto.
     def checkOut(self, booking_id: int):
-        booking = self.booking_dict.get(booking_id)
+        booking = self.__booking_dict.get(booking_id)
         if booking and booking.get_active():
             # Desativa a reserva e remove a reserva
             booking.set_active(False) 
@@ -178,10 +185,10 @@ class HotelController:
 
         try:
             number = room.get_number()
-            if number in self.room_dict:
+            if number in self.__room_dict:
                 print(f"Erro: O quarto {number} já está cadastrado.")
             else:
-                self.room_dict[number] = room
+                self.__room_dict[number] = room
                 print(f"Quarto {number} registrado com sucesso!")
         except Exception as e:
             print(f"Erro ao registrar quarto: {e}")
@@ -192,7 +199,7 @@ class HotelController:
   
         #Verifica se o quarto existe e se não há hóspedes nele antes de apagar.
 
-        room = self.room_dict.get(room_number)
+        room = self.__room_dict.get(room_number)
 
         if not room:
             print(f"Erro: O quarto {room_number} não foi encontrado no sistema.")
@@ -205,7 +212,7 @@ class HotelController:
                 return
 
             # Remove o par chave-valor do dicionário
-            del self.room_dict[room_number]
+            del self.__room_dict[room_number]
             print(f"Sucesso: Quarto {room_number} removido do sistema permanentemente.")
 
         except Exception as e:
@@ -213,12 +220,12 @@ class HotelController:
     
     # Retorna todos os quartos
     def get_all_rooms(self):
-        return self.room_dict
+        return self.__room_dict
 
     # Retorna todos as reservas
     def get_all_bookings(self):
-        return self.booking_dict
+        return self.__booking_dict
 
     # Retorna todos os clientes
     def get_all_clients(self):
-        return self.client_dict
+        return self.__client_dict

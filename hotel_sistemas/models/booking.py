@@ -1,4 +1,6 @@
 from datetime import date
+from models.client import Client
+from models.room import Room
 
 class Booking:
     _id_counter=1
@@ -43,7 +45,7 @@ class Booking:
     def set_client(self, client):
         self._client = client
 
-    def set_active(self, active: Boolean):
+    def set_active(self, active: bool):
         self.__active = active
 
     def set_room(self, room):

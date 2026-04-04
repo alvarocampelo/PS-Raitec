@@ -143,9 +143,8 @@ class HotelController:
 
             # Ao remover a reserva, garante-se que o quarto volte a ficar disponível.
             room = booking.get_room()
-            if room.get_occupied():
-                room.set_occupied(False)
-
+            if room.get_status():
+                room.set_status(False)
             # remove
             del self.get_all_bookings()[booking_id]
             print(f"Sucesso: Reserva {booking_id} removida/cancelada com sucesso.")
@@ -162,7 +161,7 @@ class HotelController:
 
         # Ativa a reserva e ocupa o quarto
         booking.set_active(True)
-        booking.get_room().set_occupied(True)
+        booking.get_room().set_status(True)
         print(f"Check-in realizado para {booking.get_client().get_name()}!")
 
     # Finaliza a reserva e libera o quarto.
@@ -229,3 +228,4 @@ class HotelController:
     # Retorna todos os clientes
     def get_all_clients(self):
         return self.__client_dict
+    

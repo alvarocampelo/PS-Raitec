@@ -2,75 +2,453 @@ from controllers.hotel_controller import HotelController
 from models.client import Client
 from models.room import Room
 from models.booking import Booking
-from models.admin import Admin
+from datetime import datetime
 
 controller = HotelController()
+_booking_counter = 1  # Auto-incremento de IDs de reserva
 
+
+
+#gerais
+def input_date(prompt: str) -> datetime:
+    #valida datas
+    while True:
+        raw = input(f"  {prompt} (dd/mm/aaaa): ").strip()
+        try:
+            return datetime.strptime(raw, "%d/%m/%Y")
+        except ValueError:
+            print("  Data inválida. Use o formato dd/mm/aaaa.")
+
+
+def input_int(prompt: str) -> int:
+    #valida inteiros
+    while True:
+        try:
+            return int(input(f"  {prompt}").strip())
+        except ValueError:
+            print("  Digite um número válido.")
+
+
+def input_float(prompt: str) -> float:
+    #valida floats
+    while True:
+        try:
+            return float(input(f"  {prompt}").strip())
+        except ValueError:
+            print("  Digite um valor numérico válido.")
+
+
+def pause():
+    #tempo de leitura no menu
+    input("\n  [Enter para continuar]")
+
+
+def fmt_date(d: datetime) -> str:
+    #formata as datas pra string
+    return d.strftime("%d/%m/%Y")
+
+
+def fmt_booking(b: Booking) -> str:
+    #formata os bookings pra string 
+    status = "✔ Check-in realizado" if b.get_active() else "⏳ Aguardando"
+    return (
+        f"  ID: {b.get_id()} | "
+        f"Cliente: {b.get_client().get_name()} | "
+        f"Quarto: {b.get_room().get_number()} | "
+        f"Entrada: {fmt_date(b.get_checkin())} | "
+        f"Saída: {fmt_date(b.get_checkout())} | "
+        f"Status: {status}"
+    )
+
+def fmt_room(r: Room) -> str:
+    status = "Ocupado" if r.get_status() else "Livre"
+    return (
+        f"  Nº {r.get_number()} | "
+        f"Máx. pessoas: {r.get_max_people()} | "
+        f"Diária: R$ {r.get_daily_price():.2f} | "
+        f"{status}"
+    )
+
+#menu geral
 def start():
-    print("Bem vindo")
-    print("1 - Cliente")
-    print("2 - Administrção")
+    while True:
+        print("HOTEL SYS")
+        print("1 · Área do Cliente")
+        print("2 · Administração")
+        print("0 · Sair")
+        opt = input("  Escolha: ").strip()
 
-def cliente_opcoes():
-    print("1 - Cadastrar cliente")
-    print("2 - Já sou Cliente")
-    print("0 - Sair")
+        match opt:
+            case "1": menu_cliente()
+            case "2": menu_admin_login()
+            case "0":
+                print("\n  Encerrando sistema. Até logo!\n")
+                exit()
+            case _: print("  Opção inválida.")
 
-def admin_login():
-    login= input("Login: ")
-    password= input("Password: ")
+#menu cliente
+def menu_cliente():
+    while True:
+        print("\n─── ÁREA DO CLIENTE ───────────────")
+        print("  1 · Criar conta")
+        print("  2 · Entrar (login por CPF)")
+        print("  0 · Voltar")
+        opt = input("  Escolha: ").strip()
 
+        match opt:
+            case "1": cadastrar_cliente()
+            case "2": login_cliente()
+            case "0": break
+            case _: print("  Opção inválida.")
+
+#cadastrar cliente ou achar existente
 def cadastrar_cliente():
-    nome = input("Nome: ")
-    idade = input("Idade: ")
-    cpf = input("CPF: ")
+    print("\n  ── Criar Conta ──")
+    nome = input("  Nome completo: ").strip()
+    if not nome:
+        print("  Erro: o nome não pode estar vazio.")
+        return
+    idade = input_int("Idade: ")
+    cpf = input("  CPF: ").strip()
+    if not cpf:
+        print("  Erro: o CPF não pode estar vazio.")
+        return
+
     cliente = Client(nome, idade, cpf)
     controller.register_client(cliente)
-    print("Cliente cadastrado com sucesso!")
+    pause()
+
 
 def login_cliente():
-    cpf = input("CPF: ")
-    for()
+    print("\n  ── Login ──")
+    cpf = input("  CPF: ").strip()
+    cliente = controller.get_all_clients().get(cpf)
 
-
-def cadastrar_quarto():
-    numero = input("Número do quarto: ")
-    controller.cadastrar_quarto(numero)
-    print("Quarto cadastrado com sucesso!")
-
-def fazer_reserva():
-    cliente_id = input("ID do cliente: ")
-    quarto_id = input("ID do quarto: ")
-    checkin = input("Check-in (dd/mm/aaaa): ")
-    dias = input("Dias: ")
-    controller.fazer_reserva(cliente_id, quarto_id, checkin, dias)
-    print("Reserva feita com sucesso!")
-
-def listar_reservas():
-    reservas = controller.listar_reservas()
-    for r in reservas:
-        print(r)
-
-def sair():
-    print("Encerrando...")
-    exit()
-
-def executar(opcao):
-    acoes = {
-        "1": cadastrar_cliente,
-        "2": cadastrar_quarto,
-        "3": fazer_reserva,
-        "4": listar_reservas,
-        "0": sair,
-    }
-    acao = acoes.get(opcao)
-    if acao:
-        acao()
+    if cliente:
+        print(f"\n  Bem-vindo(a), {cliente.get_name()}!")
+        menu_cliente_logado(cliente)
     else:
-        print("Opção inválida.")
+        print("  CPF não encontrado. Cadastre-se primeiro.")
+        pause()
 
-def run():
+
+#menu cliente logado
+def menu_cliente_logado(cliente: Client):
+    #menu geral do cliente
     while True:
-        exibir_opcoes()
-        opcao = input("\nEscolha: ")
-        executar(opcao)
+        print(f"\n─── OLÁ, {cliente.get_name().upper()} ─────────────────")
+        print("  1 · Minhas reservas")
+        print("  2 · Solicitar reserva")
+        print("  3 · Cancelar reserva")
+        print("  4 · Ver quartos disponíveis")
+        print("  0 · Sair da conta")
+        opt = input("  Escolha: ").strip()
+
+        match opt:
+            case "1": ver_reservas_cliente(cliente)
+            case "2": solicitar_reserva(cliente)
+            case "3": cancelar_reserva_cliente(cliente)
+            case "4": listar_quartos_disponiveis()
+            case "0": break
+            case _: print("  Opção inválida.")
+
+
+def ver_reservas_cliente(cliente: Client):
+    #mostra as reservas do cliente já logado
+    print(f"\n  ── Reservas de {cliente.get_name()} ──")
+    reservas = [
+        b for b in controller.get_all_bookings().values()
+        if b.get_client().get_cpf() == cliente.get_cpf()
+    ]
+    if not reservas:
+        print("  Nenhuma reserva encontrada.")
+    else:
+        for b in reservas:
+            print(fmt_booking(b))
+    pause()
+
+
+def listar_quartos_disponiveis():
+    #mostra quartos disponiveis no hotel
+    print("\n  ── Quartos Disponíveis ──")
+    disponiveis = [r for r in controller.get_all_rooms().values() if not r.get_status()]
+    if not disponiveis:
+        print("  Nenhum quarto disponível no momento.")
+    else:
+        for q in disponiveis:
+            print(fmt_room(q))
+    pause()
+
+
+def solicitar_reserva(cliente: Client):
+    print("\n  ── Solicitar Reserva ──")
+
+    #mostra de novo os quartos disponíveis antes de pedir a escolha
+    disponiveis = [r for r in controller.get_all_rooms().values() if not r.get_occupied()]
+    if not disponiveis:
+        print("  Nenhum quarto disponível no momento.")
+        pause()
+        return
+
+    print("\n  Quartos disponíveis:")
+    for q in disponiveis:
+        print(fmt_room(q))
+
+    numero = input_int("Número do quarto desejado: ")
+    quarto = controller.get_all_rooms().get(numero)
+
+    if not quarto:
+        print("  Quarto não encontrado.")
+        pause()
+        return
+    if quarto.get_occupied():
+        print("  Quarto indisponível no momento.")
+        pause()
+        return
+
+    checkin = input_date("Data de Check-in")
+    checkout = input_date("Data de Check-out")
+
+    if checkout <= checkin:
+        print("  Erro: Check-out deve ser posterior ao Check-in.")
+        pause()
+        return
+
+    global _booking_counter
+    booking = Booking(_booking_counter, cliente, quarto, checkin, checkout)
+    controller.reqBooking(booking)
+    _booking_counter += 1
+    pause()
+
+
+def cancelar_reserva_cliente(cliente: Client):
+    print("\n  ── Cancelar Reserva ──")
+
+    #mostra todas as reservas futuras que o cliente tem
+    cancelaveis = [
+        b for b in controller.get_all_bookings().values()
+        if b.get_client().get_cpf() == cliente.get_cpf() and not b.get_active()
+    ]
+
+    if not cancelaveis:
+        print("  Nenhuma reserva cancelável.\n"
+              "  (Reservas com check-in ativo precisam de check-out primeiro.)")
+        pause()
+        return
+
+    for b in cancelaveis:
+        print(fmt_booking(b))
+
+    b_id = input_int("ID da reserva a cancelar: ")
+
+    #confirma que a reserva é do cliente tratado
+    booking = controller.get_all_bookings().get(b_id)
+    if not booking or booking.get_client().get_cpf() != cliente.get_cpf():
+        print("  Reserva não encontrada ou não pertence a você.")
+        pause()
+        return
+
+    controller.remove_booking(b_id)
+    pause()
+
+
+#-------------------------------------------------------------------------------------------------
+#menu admin
+def menu_admin_login():
+    print("\n  ── Login Administrativo ──")
+    senha = input("  Senha: ").strip()
+
+    if not controller.accessAuthentication(senha):
+        pause()
+        return  # Retorna ao menu principal (acesso negado ou bloqueado)
+
+    menu_admin()
+
+
+def menu_admin():
+    while True:
+        print("\nPAINEL ADMINISTRATIVO")
+        print("  1 · Gerenciar Quartos")
+        print("  2 · Gerenciar Reservas")
+        print("  3 · Gerenciar Clientes")
+        print("  4 · Realizar Check-in")
+        print("  5 · Realizar Check-out")
+        print("  0 · Sair do painel")
+        opt = input("  Escolha: ").strip()
+
+        match opt:
+            case "1": menu_admin_quartos()
+            case "2": menu_admin_reservas()
+            case "3": menu_admin_clientes()
+            case "4": admin_checkin()
+            case "5": admin_checkout()
+            case "0": break
+            case _: print("  Opção inválida.")
+
+
+# ── Admin: Quartos ──────────────────────────────────────────
+
+def menu_admin_quartos():
+    while True:
+        print("\n─── QUARTOS ───────────────────────────")
+        print("  1 · Listar todos")
+        print("  2 · Cadastrar quarto")
+        print("  3 · Remover quarto")
+        print("  0 · Voltar")
+        opt = input("  Escolha: ").strip()
+
+        match opt:
+            case "1": admin_listar_quartos()
+            case "2": admin_cadastrar_quarto()
+            case "3": admin_remover_quarto()
+            case "0": break
+            case _: print("  Opção inválida.")
+
+
+def admin_cadastrar_quarto():
+    print("\n  ── Cadastrar Quarto ──")
+    numero = input_int("Número: ")
+    max_pessoas = input_int("Capacidade máxima de pessoas: ")
+    preco = input_float("Preço da diária (R$): ")
+    quarto = Room(numero, max_pessoas, preco, False)
+    #false= quarto disponível
+    controller.register_room(quarto)
+    pause()
+
+def admin_cadastrar_quarto():
+    print("\n  ── Cadastrar Quarto ──")
+    numero = input_int("Número: ")
+    tipo = input("  Tipo (ex: Single, Double, Suite): ").strip()
+    preco = input_float("Preço da diária (R$): ")
+    quarto = Room(numero, tipo, preco)
+    controller.register_room(quarto)
+    pause()
+
+
+def admin_remover_quarto():
+    print("\n  ── Remover Quarto ──")
+    admin_listar_quartos()
+    numero = input_int("Número do quarto a remover: ")
+    controller.remove_room(numero)
+    pause()
+
+
+# ── Admin: Reservas ─────────────────────────────────────────
+
+def menu_admin_reservas():
+    while True:
+        print("\n─── RESERVAS ──────────────────────────")
+        print("  1 · Listar todas")
+        print("  2 · Cancelar reserva")
+        print("  0 · Voltar")
+        opt = input("  Escolha: ").strip()
+
+        match opt:
+            case "1": admin_listar_reservas()
+            case "2": admin_cancelar_reserva()
+            case "0": break
+            case _: print("  Opção inválida.")
+
+
+def admin_listar_reservas():
+    print("\n  ── Todas as Reservas ──")
+    reservas = controller.get_all_bookings()
+    if not reservas:
+        print("  Nenhuma reserva registrada.")
+    else:
+        for b in reservas.values():
+            print(fmt_booking(b))
+    pause()
+
+
+def admin_cancelar_reserva():
+    print("\n  ── Cancelar Reserva ──")
+    admin_listar_reservas()
+    b_id = input_int("ID da reserva a cancelar: ")
+    controller.remove_booking(b_id)
+    pause()
+
+#admin com clientes(Ver, check-in/-out, )
+def menu_admin_clientes():
+    while True:
+        print("\n─── CLIENTES ──────────────────────────")
+        print("  1 · Listar todos")
+        print("  2 · Cadastrar cliente")
+        print("  3 · Ver reservas de um cliente")
+        print("  0 · Voltar")
+        opt = input("  Escolha: ").strip()
+
+        match opt:
+            case "1": admin_listar_clientes()
+            case "2": cadastrar_cliente()
+            case "3": admin_reservas_por_cliente()
+            case "0": break
+            case _: print("  Opção inválida.")
+
+
+def admin_listar_clientes():
+    print("\n  ── Todos os Clientes ──")
+    clientes = controller.get_all_clients()
+    if not clientes:
+        print("  Nenhum cliente cadastrado.")
+    else:
+        for c in clientes.values():
+            print(f"  CPF: {c.get_cpf()} | Nome: {c.get_name()} | Idade: {c.get_age()}")
+    pause()
+
+
+def admin_reservas_por_cliente():
+    print("\n  ── Reservas por Cliente ──")
+    admin_listar_clientes()
+    cpf = input("  CPF do cliente: ").strip()
+    cliente = controller.get_all_clients().get(cpf)
+
+    if not cliente:
+        print("  Cliente não encontrado.")
+        pause()
+        return
+
+    reservas = [
+        b for b in controller.get_all_bookings().values()
+        if b.get_client().get_cpf() == cpf
+    ]
+    if not reservas:
+        print(f"  {cliente.get_name()} não possui reservas.")
+    else:
+        for b in reservas:
+            print(fmt_booking(b))
+    pause()
+
+def admin_checkin():
+    print("\n  ── Realizar Check-in ──")
+    #mostra as reservas sem check-in ativo
+    pendentes = [b for b in controller.get_all_bookings().values() if not b.get_active()]
+    if not pendentes:
+        print("  Nenhuma reserva aguardando check-in.")
+        pause()
+        return
+    for b in pendentes:
+        print(fmt_booking(b))
+
+    b_id = input_int("ID da reserva: ")
+    controller.checkIn(b_id)
+    pause()
+
+
+def admin_checkout():
+    print("\n  ── Realizar Check-out ──")
+    #mostra as reservas com check-in ativo
+    ativas = [b for b in controller.get_all_bookings().values() if b.get_active()]
+    if not ativas:
+        print("  Nenhum hóspede com check-in ativo no momento.")
+        pause()
+        return
+    for b in ativas:
+        print(fmt_booking(b))
+
+    b_id = input_int("ID da reserva: ")
+    controller.checkOut(b_id)
+    pause()
+
+if __name__ == "__main__":
+    start()

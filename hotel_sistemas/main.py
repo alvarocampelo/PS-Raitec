@@ -1,4 +1,3 @@
-from ui.menu import run
+from ui.menu import start
 
-run()
-
+start()

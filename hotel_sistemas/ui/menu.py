@@ -1,4 +1,8 @@
 from controllers.hotel_controller import HotelController
+from models.client import Client
+from models.room import Room
+from models.booking import Booking
+from models.admin import Admin
 
 controller = HotelController()
 
@@ -20,11 +24,13 @@ def cadastrar_cliente():
     nome = input("Nome: ")
     idade = input("Idade: ")
     cpf = input("CPF: ")
-    controller.cadastrar_cliente(nome, idade, cpf)
+    cliente = Client(nome, idade, cpf)
+    controller.register_client(cliente)
     print("Cliente cadastrado com sucesso!")
 
 def login_cliente():
     cpf = input("CPF: ")
+    for()
 
 
 def cadastrar_quarto():

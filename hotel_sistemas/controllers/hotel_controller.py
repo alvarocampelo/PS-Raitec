@@ -94,9 +94,6 @@ class HotelController:
             if b_id in self.booking_dict:
                 print(f"Erro: A reserva ID {b_id} já existe.")
             else:
-                room = booking.get_room()
-                booking.set_active(True)
-                room.set_occupied(True)
                 self.booking_dict[b_id] = booking
                 print(f"Reserva {b_id} registrada com sucesso!")
         except Exception as e:
@@ -116,7 +113,7 @@ class HotelController:
                     print("Erro: O quarto já está reservado para este período!")
                     return # Encerra após o erro
 
-        self.registerBooking(booking) # Ao final de tudo, registra a reserva
+        self.register_booking(booking) # Ao final de tudo, registra a reserva
 
     # Remove ou cancela uma reserva do sistema.
 
@@ -124,7 +121,7 @@ class HotelController:
         
        
         # Verifica se a reserva existe e se não está 'Em Andamento' antes de apagar.
-        booking = self.get_all_bookings().get(booking_id)
+        booking = self.booking_dict.get(booking_id)
 
         if not booking:
             print(f"Erro: A reserva com ID {booking_id} não foi encontrada.")
@@ -151,27 +148,26 @@ class HotelController:
 
     # Ativa a reserva e ocupa o quarto.
     def checkIn(self, booking_id: int):
-        
         booking = self.booking_dict.get(booking_id)
         if not booking:
             print("Erro: Reserva não encontrada.")
             return
 
-        if booking.get_active():
-            self.register_booking(booking_id)
-            print(f"Check-in realizado para {booking.get_client().get_name()}!")
-        else:
-            print(f"Erro: Check-in negado. Status atual: {booking.get_active()}")
+        # Ativa a reserva e ocupa o quarto
+        booking.set_active(True)
+        booking.get_room().set_occupied(True)
+        print(f"Check-in realizado para {booking.get_client().get_name()}!")
 
     # Finaliza a reserva e libera o quarto.
     def checkOut(self, booking_id: int):
-        
         booking = self.booking_dict.get(booking_id)
         if booking and booking.get_active():
-            self.remove_booking(booking_id) # remove a reserva e libera o quarto
+            # Desativa a reserva e remove a reserva
+            booking.set_active(False) 
+            self.remove_booking(booking_id) 
             print(f"Check-out da reserva {booking_id} concluído. Quarto liberado.")
         else:
-            print("Erro: Reserva não está em andamento.")
+            print("Erro: Reserva não encontrada ou não está ativa.")
 
     # Registra o quarto
 

@@ -44,5 +44,6 @@ class HotelController:
 
     def dict_clients(self) -> dict[str, Client]:
         return self.client_dict
-
+    
+    #def register_booking()
     #criar funcoes gerais do hotel...

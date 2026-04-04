@@ -1,7 +1,9 @@
+from datetime import date
+
 class Booking:
     _id_counter=1
 
-    def __init__(self, client: Client, room: Room, checkin: Date, days: int, total_expense: float):
+    def __init__(self, client: Client, room: Room, checkin: date, days: int, total_expense: float):
         self._id_counter= Booking._id_counter
         Booking._id_counter+=1
 
@@ -13,7 +15,7 @@ class Booking:
     
     #getters
     def get_id(self):
-        return self._id
+        return self._id_counter
 
     def get_client(self):
         return self._client

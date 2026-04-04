@@ -1,26 +1,26 @@
 class Admin:
     _id_counter=1
 
-    def __init__(self, name: str, password: int):
+    def __init__(self, login: str, password: int):
         self._id= Admin._id_counter
         Admin._id_counter+=1
 
-        self._name= name
+        self._login= login
         self._password= password
     
     #getters
     def get_id(self):
         return self._id
 
-    def get_name(self):
-        return self._name
+    def get_login(self):
+        return self._login
 
     def get_password(self):
         return self._password
 
     #setters
-    def set_name(self, name):
-        self._name = name
+    def set_login(self, login):
+        self._login = login
 
     def set_password(self, password):
         if len(str(password)) >= 4:

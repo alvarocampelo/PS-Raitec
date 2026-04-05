@@ -1,17 +1,20 @@
 from datetime import date
+from models.client import Client
+from models.room import Room
 
 class Booking:
     _id_counter=1
 
-    def __init__(self, client: Client, room: Room, checkin: date, days: int, total_expense: float):
+    def __init__(self, client: Client, room: Room, checkin: date, checkout :date):
         self._id_counter= Booking._id_counter
         Booking._id_counter+=1
 
         self._client= client
         self._room= room
         self._checkin= checkin
-        self._days= days
-        self._total_expense= total_expense
+        self._active= False
+        self._checkin = checkin
+        self._checkout = checkout
     
     #getters
     def get_id(self):
@@ -25,16 +28,19 @@ class Booking:
 
     def get_checkin(self):
         return self._checkin
-
-    def get_days(self):
-        return self._days
-
-    def get_total_expense(self):
-        return self._total_expense
+    
+    def get_checkout(self):
+        return self._checkout
+    
+    def get_active(self):
+        return self._active
     
     #setters
     def set_client(self, client):
         self._client = client
+
+    def set_active(self, active: bool):
+        self._active = active
 
     def set_room(self, room):
         self._room = room
@@ -42,11 +48,8 @@ class Booking:
     def set_checkin(self, checkin):
         self._checkin = checkin
 
-    def set_days(self, days):
-        if days > 0:
-            self._days = days
+    def set_checkout(self, checkout):
+        self._checkout = checkout
 
-    def set_total_expense(self, total_expense):
-        if total_expense >= 0:
-            self._total_expense = total_expense
+
 

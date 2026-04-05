@@ -8,7 +8,7 @@ load_dotenv()
 class DatabaseManager:
     @staticmethod
     def get_connection():
-        """Retorna uma n    ova conexão com o banco de dados."""
+        """Retorna uma nova conexão com o banco de dados."""
         try:
             conn = mysql.connector.connect(
                 host=os.getenv("DB_HOST"),

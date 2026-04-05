@@ -36,17 +36,17 @@ class Booking:
     def get_total_expense(self):
         dailys = (self._checkout - self._checkin).days
         if dailys <= 0: dailys = 1 # Garantir pelo menos 1 diária
-        self._total_expense = dailys * self._room.get_price()
+        self._total_expense = dailys * self._room.get_daily_price()
 
     def get_active(self):
-        return self.__active
+        return self._active
     
     #setters
     def set_client(self, client):
         self._client = client
 
     def set_active(self, active: bool):
-        self.__active = active
+        self._active = active
 
     def set_room(self, room):
         self._room = room

@@ -105,7 +105,7 @@ class HotelController:
         room_number = booking.get_room().get_number()
         
         # Verifica se o quarto existe no sistema
-        if room_number not in self.room_dict:
+        if room_number not in self.__room_dict:
             print(f"Erro: O quarto {room_number} não existe no cadastro.")
             return
 
@@ -113,7 +113,7 @@ class HotelController:
         checkout = booking.get_checkout()
 
         # Verifica conflito de datas
-        for b in self.booking_dict.values():
+        for b in self.__booking_dict.values():
             if b.get_room().get_number() == room_number:
                 if not (checkout <= b.get_checkin() or checkin >= b.get_checkout()):
                     print("Erro: O quarto já está reservado para este período!")
@@ -206,7 +206,7 @@ class HotelController:
 
         try:
             # Não é possível remover um quarto da base de dados se houver alguém com check-in ativo
-            if room.get_occupied():
+            if room.get_status():
                 print(f"Erro: Não é possível remover o quarto {room_number}. Ele está Ocupado no momento.")
                 return
 

@@ -1,231 +1,339 @@
+import mysql.connector
+from mysql.connector import Error
 from models.client import Client
 from models.room import Room
 from models.booking import Booking
-from models.admin import Admin
+from repository.connection import DatabaseManager
 
 class HotelController:
-
     def __init__(self):
-        self.__login_attempts = 0  # Contador de erros
+        self.__login_attempts = 0
         self.__admin_password = "teste"
-        self.__client_dict: dict[str, Client] = {}
-        self.__room_dict: dict[str, Room] = {}
-        self.__booking_dict: dict[str, Booking] = {}
 
-    # Autentica o administrador. 
+    # --- AUTENTICAÇÃO ---
     def accessAuthentication(self, password: str) -> bool:
-        
-        # Realiza a autenticação do administrador com controle de tentativas.
-        # Retorna True se a senha estiver correta, False caso contrário.
-        
-        # Constante que define o teto de erros permitidos antes do bloqueio
         MAX_ATTEMPTS = 3 
-
-        # Verifica primeiro se o sistema já está bloqueado por excesso de erros
-        # Isso impede que o usuário continue tentando mesmo se acertar a senha depois
         if self.__login_attempts >= MAX_ATTEMPTS:
-            print("ACESSO BLOQUEADO: Limite de tentativas excedido. Contate o suporte.")
+            print("ACESSO BLOQUEADO: Limite de tentativas excedido.")
             return False
 
-        # Comparação da senha fornecida com a senha armazenada no controlador
         if password == self.__admin_password:
-            # Se acertar, resetamos o contador para 0. 
-            # Isso garante que futuras falhas não acumulem com erros antigos já resolvidos.
             self.__login_attempts = 0 
-            print("Autenticação bem-sucedida! Bem-vindo, Admin.")
+            print("Autenticação bem-sucedida!")
             return True
-        
         else:
-            # Se errar, incrementamos o contador de falhas da instância
             self.__login_attempts += 1
-            
-            # Cálculo dinâmico de quantas chances o usuário ainda tem
-            tentativas_restantes = MAX_ATTEMPTS - self.__login_attempts
-            
-            # Feedback visual para o usuário não ser pego de surpresa pelo bloqueio
-            print(f"Erro: Senha incorreta! Tentativas restantes: {tentativas_restantes}")
-            
+            print(f"Erro: Senha incorreta! Tentativas restantes: {MAX_ATTEMPTS - self.__login_attempts}")
             return False
-        
-    # Registra o cliente
+
+    # --- CLIENTES --- REGISTRO --- 
     def register_client(self, client: Client):
-        
-        # Garante que o que foi passado é realmente uma instância da classe Client.
-        
         if not isinstance(client, Client):
-            print("Erro: O objeto fornecido não é um Cliente válido.")
+            print("Erro: Objeto inválido, objeto deve ser do tipo Client")
             return
 
-        try:
-            
-            # Tenta obter o CPF usando o método getter do objeto cliente.
-            cpf = client.get_cpf()
-            
-            
-            # Se o CPF vier vazio ou nulo, interrompe o processo lançando um erro.
-            if not cpf:
-                raise ValueError("CPF não pode estar vazio.")
+        query = "INSERT INTO clients (cpf, name, age) VALUES (%s, %s, %s)"
+        values = (client.get_cpf(), client.get_name(), client.get_age())
 
-            
-            
-            # Se já existir no dicionário, impede o cadastro para não sobrescrever um cliente antigo.
-            if cpf in self.__client_dict:
-                print(f"Erro: O CPF {cpf} já está cadastrado.")
-            
-            else:
-                # Adiciona o objeto cliente ao dicionário, usando o CPF como chave para busca rápida.
-                self.__client_dict[cpf] = client
-                print(f"Cliente {client.get_name()} registrado com sucesso!")
-
-        except Exception as e:
-            # Captura qualquer erro inesperado (ex: erro no get_cpf) e exibe uma mensagem amigável 
-            # em vez de deixar o programa travar (crash).
-            print(f"Erro ao registrar cliente: {e}")
-
-    # Registra reserva e altera o status do quarto
-    
-    def register_booking(self, booking: Booking):
-        if not isinstance(booking, Booking):
-            print("Erro: O objeto fornecido não é uma Reserva válida.")
-            return
-
-        try:
-            b_id = booking.get_id()
-            if b_id in self.__booking_dict:
-                print(f"Erro: A reserva ID {b_id} já existe.")
-            else:
-                self.__booking_dict[b_id] = booking
-                print(f"Reserva {b_id} registrada com sucesso!")
-        except Exception as e:
-            print(f"Erro ao registrar reserva: {e}")
-
-    # Solicita reserva
-
-    def reqBooking(self, booking: Booking) -> None:
-        room_number = booking.get_room().get_number()
+        # Abre a conexão 
+        conn = DatabaseManager.get_connection()
         
-        # Verifica se o quarto existe no sistema
-        if room_number not in self.__room_dict:
-            print(f"Erro: O quarto {room_number} não existe no cadastro.")
-            return
+        if conn:
+            try:
+                # O 'with' garante que o cursor.close() seja chamado ao sair do bloco
+                with conn.cursor() as cursor:
+                    cursor.execute(query, values)
+                    conn.commit()
+                    print(f"Cliente {client.get_name()} registrado com sucesso!")
+            
+            except mysql.connector.IntegrityError as err:
+                if err.errno == 1062:
+                    print(f"Erro: O CPF {client.get_cpf()} já existe.")
+                else:
+                    print(f"Erro de integridade: {err}")
+            
+            except Exception as e:
+                print(f"Erro inesperado: {e}")
+                
+            finally:
+                # Fecha a conexão aqui 
+                if conn.is_connected():
+                    conn.close()
 
-        checkin = booking.get_checkin()
-        checkout = booking.get_checkout()
-
-        # Verifica conflito de datas
-        for b in self.__booking_dict.values():
-            if b.get_room().get_number() == room_number:
-                if not (checkout <= b.get_checkin() or checkin >= b.get_checkout()):
-                    print("Erro: O quarto já está reservado para este período!")
-                    return 
-
-        # Registra reserva
-
-        self.register_booking(booking)
-
-    # Remove ou cancela uma reserva do sistema.
-    def remove_booking(self, booking_id: int):
-        
-       
-        # Verifica se a reserva existe e se não está 'Em Andamento' antes de apagar.
-        booking = self.__booking_dict.get(booking_id)
-
-        if not booking:
-            print(f"Erro: A reserva com ID {booking_id} não foi encontrada.")
-            return
-
-        try:
-            # Se o hóspede já estiver no hotel, você não pode simplesmente apagar a reserva.
-            # Ele precisa fazer o Check-out primeiro para encerrar a conta.
-            if booking.get_active() == True:
-                print(f"Erro: Não é possível remover a reserva {booking_id}. O hóspede já realizou Check-in.")
-                return
-
-            # Ao remover a reserva, garante-se que o quarto volte a ficar disponível.
-            room = booking.get_room()
-            if room.get_status():
-                room.set_status(False)
-            # remove
-            del self.get_all_bookings()[booking_id]
-            print(f"Sucesso: Reserva {booking_id} removida/cancelada com sucesso.")
-
-        except Exception as e:
-            print(f"Erro inesperado ao remover reserva: {e}")
-
-    # Ativa a reserva e ocupa o quarto.
-    def checkIn(self, booking_id: int):
-        booking = self.__booking_dict.get(booking_id)
-        if not booking:
-            print("Erro: Reserva não encontrada.")
-            return
-
-        # Ativa a reserva e ocupa o quarto
-        booking.set_active(True)
-        booking.get_room().set_status(True)
-        print(f"Check-in realizado para {booking.get_client().get_name()}!")
-
-    # Finaliza a reserva e libera o quarto.
-    def checkOut(self, booking_id: int):
-        booking = self.__booking_dict.get(booking_id)
-        if booking and booking.get_active():
-            # Desativa a reserva e remove a reserva
-            booking.set_active(False) 
-            self.remove_booking(booking_id) 
-            print(f"Check-out da reserva {booking_id} concluído. Quarto liberado.")
-        else:
-            print("Erro: Reserva não encontrada ou não está ativa.")
-
-    # Registra o quarto
+    # --- QUARTOS --- REGISTRO --- 
 
     def register_room(self, room: Room):
         if not isinstance(room, Room):
-            print("Erro: O objeto fornecido não é um Quarto válido.")
+            print("Erro: Objeto fornecido não é um Quarto válido.")
             return
 
-        try:
-            number = room.get_number()
-            if number in self.__room_dict:
-                print(f"Erro: O quarto {number} já está cadastrado.")
-            else:
-                self.__room_dict[number] = room
-                print(f"Quarto {number} registrado com sucesso!")
-        except Exception as e:
-            print(f"Erro ao registrar quarto: {e}")
+        query = "INSERT INTO rooms (number, max_people, daily_price, occupied) VALUES (%s, %s, %s, %s)"
+        values = (room.get_number(), room.get_max_people(), room.get_daily_price(), room.get_occupied())
 
-    # Remove um quarto do sistema.
-
+        conn = DatabaseManager.get_connection()
+        if conn:
+            try:
+                # O 'with' cuida do cursor.close() automaticamente ao sair do bloco
+                with conn.cursor() as cursor:
+                    cursor.execute(query, values)
+                    conn.commit()
+                    print(f"✅ Quarto {room.get_number()} cadastrado com sucesso!")
+            
+            except mysql.connector.IntegrityError:
+                print(f"Erro: O quarto número {room.get_number()} já está cadastrado.")
+                
+            except Exception as e:
+                print(f"Erro inesperado ao registrar quarto: {e}")
+                
+            finally:
+                # Mantemos o fechamento da conexão no finally para garantir a liberação do slot no Aiven
+                if conn.is_connected():
+                    conn.close()
+    #   QUARTOS --- REMOVER QUARTO ---
     def remove_room(self, room_number: int):
-  
-        #Verifica se o quarto existe e se não há hóspedes nele antes de apagar.
+        conn = DatabaseManager.get_connection()
+        if not conn:
+            return
 
-        room = self.__room_dict.get(room_number)
+        query = "DELETE FROM rooms WHERE number = %s"
 
-        if not room:
-            print(f"Erro: O quarto {room_number} não foi encontrado no sistema.")
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query, (room_number,))
+                conn.commit()
+
+                if cursor.rowcount > 0:
+                    print(f"Quarto {room_number} removido com sucesso!")
+                else:
+                    print(f"Quarto {room_number} não encontrado.")
+
+        except mysql.connector.IntegrityError:
+            print(f"Erro: Não é possível remover o quarto {room_number} pois ele possui reservas vinculadas.")
+        except mysql.connector.Error as err:
+            print(f"Erro ao remover quarto: {err}")
+            conn.rollback()
+        finally:
+            if conn.is_connected():
+                conn.close()
+
+    # RESERVAS --- REMOVER RESERVA ---
+    def remove_booking(self, booking_id: int):
+        conn = DatabaseManager.get_connection()
+        if not conn:
+            return
+
+        query = "DELETE FROM bookings WHERE id = %s"
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query, (booking_id,))
+                conn.commit()
+                
+                if cursor.rowcount > 0:
+                    print(f"Reserva {booking_id} removida com sucesso!")
+                else:
+                    print(f"Nenhuma reserva encontrada com o ID {booking_id}.")
+        
+        except mysql.connector.Error as err:
+            print(f"Erro ao remover reserva: {err}")
+            conn.rollback()
+        finally:
+            if conn.is_connected():
+                conn.close()
+
+    # --- RESERVAS (Fluxo Completo) ---
+    def reqBooking(self, booking: Booking):
+        # 1. Extração de dados do objeto
+        room = booking.get_room()
+        room_num = room['number']
+        checkin = booking.get_checkin()
+        checkout = booking.get_checkout()
+        client_cpf = booking.get_client()['cpf']
+
+        # Verifica se há qualquer sobreposição de datas para o mesmo quarto
+        check_query = """
+            SELECT id FROM bookings 
+            WHERE room_number = %s 
+            AND NOT (%s >= checkout OR %s <= checkin)
+        """
+        
+        insert_query = """
+            INSERT INTO bookings (client_cpf, room_number, checkin, checkout)
+            VALUES (%s, %s, %s, %s)
+        """
+
+        # Gerenciamento de Conexão com a Nuvem 
+        conn = DatabaseManager.get_connection() 
+        
+        if conn:
+            try:
+                # Usando 'with' para garantir que o cursor feche automaticamente
+                with conn.cursor() as cursor:
+                    # Verificar disponibilidade
+                    cursor.execute(check_query, (room_num, checkin, checkout))
+                    
+                    if cursor.fetchone():
+                        print(f" Erro: O quarto {room_num} já está ocupado entre {checkin} e {checkout}!")
+                    else:
+                        # Realizar a reserva
+                        cursor.execute(insert_query, (
+                            client_cpf, 
+                            room_num, 
+                            checkin, 
+                            checkout
+                        ))
+                        conn.commit()
+                        print(f"  Reserva no quarto {room_num} solicitada com sucesso!")
+            
+            except mysql.connector.Error as err:
+                print(f"Erro no banco de dados: {err}")
+            
+            except Exception as e:
+                print(f"Erro inesperado: {e}")
+                
+            finally:
+                # Fecha a conexão 
+                if conn.is_connected():
+                    conn.close()
+
+# --- CHECK-IN / CHECK-OUT ---
+    
+    def checkIn(self, booking_id: int):
+        conn = DatabaseManager.get_connection()
+        if not conn:
             return
 
         try:
-            # Não é possível remover um quarto da base de dados se houver alguém com check-in ativo
-            if room.get_status():
-                print(f"Erro: Não é possível remover o quarto {room_number}. Ele está Ocupado no momento.")
-                return
+            # O 'with' garante que o cursor seja fechado automaticamente
+            with conn.cursor() as cursor:
+                # 1. Ativa a reserva (muda status para ativo)
+                cursor.execute("UPDATE bookings SET active = 1 WHERE id = %s", (booking_id,))
+                
+                # 2. Ocupa o quarto associado a essa reserva específica
+                cursor.execute("""
+                    UPDATE rooms SET occupied = 1 
+                    WHERE number = (SELECT room_number FROM bookings WHERE id = %s)
+                """, (booking_id,))
+                
+                # Só salvamos se ambos os comandos acima correrem bem
+                conn.commit()
+                print(f"🔔 Check-in realizado com sucesso! (ID Reserva: {booking_id})")
+        
+        except mysql.connector.Error as err:
+            print(f"❌ Erro de banco de dados no Check-in: {err}")
+            conn.rollback() # Reverte alterações se algo falhar no meio
+        finally:
+            if conn.is_connected():
+                conn.close()
 
-            # Remove o par chave-valor do dicionário
-            del self.__room_dict[room_number]
-            print(f"Sucesso: Quarto {room_number} removido do sistema permanentemente.")
+    def checkOut(self, booking_id: int):
+        conn = DatabaseManager.get_connection()
+        if not conn:
+            return
 
-        except Exception as e:
-            print(f"Erro inesperado ao remover quarto: {e}")
-    
-    # Retorna todos os quartos
-    def get_all_rooms(self):
-        return self.__room_dict
+        try:
+            with conn.cursor() as cursor:
+                # 1. Libera o quarto antes de apagar a reserva (subquery)
+                cursor.execute("""
+                    UPDATE rooms SET occupied = 0 
+                    WHERE number = (SELECT room_number FROM bookings WHERE id = %s)
+                """, (booking_id,))
+                
+                # 2. Remove a reserva do sistema 
+                cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+                
+                conn.commit()
+                print(f"Check-out finalizado para a reserva {booking_id}. Quarto liberado!")
+        
+        except mysql.connector.Error as err:
+            print(f"❌ Erro de banco de dados no Check-out: {err}")
+            conn.rollback()
+        finally:
+            if conn.is_connected():
+                conn.close()
 
-    # Retorna todos as reservas
-    def get_all_bookings(self):
-        return self.__booking_dict
+# --- INSIGHTS E LISTAGENS ---
 
-    # Retorna todos os clientes
     def get_all_clients(self):
-        return self.__client_dict
-    
+        """Retorna um dicionário onde a chave é o CPF e o valor são os dados do cliente."""
+        conn = DatabaseManager.get_connection()
+        if not conn:
+            return {}
+
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute("SELECT * FROM clients")
+                lista_clientes = cursor.fetchall()
+                # Transforma a lista em dicionário: { '123': {'name': 'Levi', ...}, '456': {...} }
+                return {cliente['cpf']: cliente for cliente in lista_clientes}
+        except mysql.connector.Error as err:
+            print(f"❌ Erro ao buscar clientes: {err}")
+            return {}
+        finally:
+            if conn.is_connected():
+                conn.close()
+
+    def get_all_rooms(self):
+        """Retorna um dicionário com o número do quarto como chave."""
+        conn = DatabaseManager.get_connection()
+        if not conn:
+            return {}
+
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute("SELECT * FROM rooms")
+                lista_quartos = cursor.fetchall()
+                
+                return {quarto['number']: quarto for quarto in lista_quartos}
+        except mysql.connector.Error as err:
+            print(f"❌ Erro ao buscar quartos: {err}")
+            return {}
+        finally:
+            if conn.is_connected():
+                conn.close()
+
+    def get_all_bookings(self):
+        """Retorna um dicionário com o ID da reserva como chave."""
+        conn = DatabaseManager.get_connection()
+        if not conn:
+            return {}
+
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                query = """
+                    SELECT b.id, c.name as client_name, b.room_number, 
+                        b.checkin, b.checkout, b.active 
+                    FROM bookings b
+                    JOIN clients c ON b.client_cpf = c.cpf
+                """
+                cursor.execute(query)
+                lista_reservas = cursor.fetchall()
+                return {reserva['id']: reserva for reserva in lista_reservas}
+        except mysql.connector.Error as err:
+            print(f"❌ Erro ao buscar reservas: {err}")
+            return {}
+        finally:
+            if conn.is_connected():
+                conn.close()
+
+    def get_available_rooms(self):
+        """Retorna apenas os quartos que não estão ocupados."""
+        conn = DatabaseManager.get_connection()
+        if not conn: return []
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute("SELECT * FROM rooms WHERE occupied = 0")
+                return cursor.fetchall()
+        finally:
+            if conn.is_connected(): conn.close()
+
+    def find_client_by_cpf(self, cpf: str):
+        """Busca um cliente específico pelo CPF."""
+        conn = DatabaseManager.get_connection()
+        if not conn: return None
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute("SELECT * FROM clients WHERE cpf = %s", (cpf,))
+                return cursor.fetchone()
+        finally:
+            if conn.is_connected(): conn.close()

@@ -1,13 +1,13 @@
 class Room:
     _id_counter=1
-    def __init__(self, number: int, max_people: int, daily_price: float, status: bool):
+    def __init__(self, number: int, max_people: int, daily_price: float, occupied):
         self._id=Room._id_counter
         Room._id_counter+=1
 
         self.__number = number
         self.__max_people = max_people
         self._daily_price = daily_price
-        self.__status = status 
+        self.__occuppied = occupied
     
     #getters
     def get_id_quarto(self):
@@ -22,8 +22,8 @@ class Room:
     def get_daily_price(self):
         return self._daily_price
 
-    def get_status(self):
-        return self.__status
+    def get_occupied(self):
+        return self.__occuppied
     
     #setters
     def set_id_quarto(self, id_quarto): 
@@ -38,5 +38,5 @@ class Room:
     def set_daily_price(self, daily_price):
         self._daily_price = daily_price
     
-    def set_status(self, status):
-        self.__status = status
+    def set_occupied(self, status):
+        self.__occuppied
